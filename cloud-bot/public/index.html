@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AutoClassJoiner — Cloud Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app">
+    <!-- Header -->
+    <header class="header">
+      <div class="header-left">
+        <div class="logo">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
+            <path d="M6 12v5c0 1.1 2.7 3 6 3s6-1.9 6-3v-5"/>
+          </svg>
+        </div>
+        <div>
+          <h1>AutoClassJoiner</h1>
+          <p>Cloud Bot · Render</p>
+        </div>
+      </div>
+      <div class="header-right">
+        <span class="uptime" id="uptime">—</span>
+      </div>
+    </header>
+
+    <!-- Status Banner -->
+    <div class="status-banner" id="statusBanner">
+      <div class="status-indicator" id="statusIndicator"></div>
+      <div class="status-info">
+        <span class="status-text" id="statusText">Connecting...</span>
+        <span class="status-sub" id="statusSub">Loading bot status</span>
+      </div>
+      <button class="toggle-btn" id="toggleBtn" title="Toggle Bot">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="10" y1="15" x2="10" y2="9"/>
+          <line x1="14" y1="15" x2="14" y2="9"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Stats Grid -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <span class="stat-label">Last Check</span>
+        <span class="stat-value" id="lastCheck">—</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">Last Joined</span>
+        <span class="stat-value" id="lastJoined">—</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">Classes Today</span>
+        <span class="stat-value" id="classCount">—</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">Status</span>
+        <span class="stat-value" id="botStatus">—</span>
+      </div>
+    </div>
+
+    <!-- Credentials Card -->
+    <div class="card">
+      <h2>🔐 Credentials</h2>
+      <p class="card-desc">Enter your UMS login details. Stored securely in server memory.</p>
+      <div class="form-row">
+        <input type="text" id="regNumber" placeholder="Registration Number" autocomplete="off">
+        <input type="password" id="password" placeholder="Password">
+        <button class="btn btn-accent" id="saveCredsBtn">Save</button>
+      </div>
+      <div class="cred-status" id="credStatus"></div>
+    </div>
+
+    <!-- Actions -->
+    <div class="card">
+      <h2>⚡ Quick Actions</h2>
+      <div class="actions-row">
+        <button class="btn btn-primary" id="checkNowBtn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="1 4 1 10 7 10"/>
+            <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>
+          </svg>
+          Check Now
+        </button>
+        <button class="btn btn-secondary" id="viewScheduleBtn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+            <line x1="16" y1="2" x2="16" y2="6"/>
+            <line x1="8" y1="2" x2="8" y2="6"/>
+            <line x1="3" y1="10" x2="21" y2="10"/>
+          </svg>
+          View Schedule
+        </button>
+      </div>
+    </div>
+
+    <!-- Timetable -->
+    <div class="card" id="scheduleCard" style="display:none;">
+      <h2>📅 Today's Classes</h2>
+      <div class="timetable" id="timetable"></div>
+    </div>
+
+    <!-- Logs -->
+    <div class="card">
+      <h2>📋 Activity Log</h2>
+      <div class="logs" id="logs">
+        <div class="log-entry">Waiting for data...</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API = '';  // Same origin
+
+    // DOM elements
+    const statusIndicator = document.getElementById('statusIndicator');
+    const statusText = document.getElementById('statusText');
+    const statusSub = document.getElementById('statusSub');
+    const toggleBtn = document.getElementById('toggleBtn');
+    const lastCheckEl = document.getElementById('lastCheck');
+    const lastJoinedEl = document.getElementById('lastJoined');
+    const classCountEl = document.getElementById('classCount');
+    const botStatusEl = document.getElementById('botStatus');
+    const uptimeEl = document.getElementById('uptime');
+    const regNumberInput = document.getElementById('regNumber');
+    const passwordInput = document.getElementById('password');
+    const saveCredsBtn = document.getElementById('saveCredsBtn');
+    const credStatus = document.getElementById('credStatus');
+    const checkNowBtn = document.getElementById('checkNowBtn');
+    const viewScheduleBtn = document.getElementById('viewScheduleBtn');
+    const scheduleCard = document.getElementById('scheduleCard');
+    const timetableEl = document.getElementById('timetable');
+    const logsEl = document.getElementById('logs');
+
+    // Fetch status every 5 seconds
+    setInterval(fetchStatus, 5000);
+    fetchStatus();
+
+    async function fetchStatus() {
+      try {
+        const res = await fetch(`${API}/api/status`);
+        const data = await res.json();
+        updateUI(data);
+      } catch (e) {
+        statusText.textContent = 'Disconnected';
+        statusIndicator.className = 'status-indicator error';
+      }
+    }
+
+    function updateUI(data) {
+      // Status indicator
+      statusIndicator.className = 'status-indicator';
+      if (!data.botEnabled) {
+        statusIndicator.classList.add('paused');
+        statusText.textContent = 'Bot Paused';
+        statusSub.textContent = 'Click toggle to resume';
+      } else if (data.status === 'joined') {
+        statusIndicator.classList.add('active');
+        statusText.textContent = 'Class Joined!';
+        statusSub.textContent = data.lastJoined ? data.lastJoined.name : '';
+      } else if (data.status === 'checking') {
+        statusIndicator.classList.add('checking');
+        statusText.textContent = 'Checking...';
+        statusSub.textContent = 'Scanning for active classes';
+      } else if (data.status === 'logged_in' || data.status === 'waiting' || data.status === 'no_active_class') {
+        statusIndicator.classList.add('active');
+        statusText.textContent = 'Active & Monitoring';
+        statusSub.textContent = 'Waiting for next class';
+      } else if (data.status === 'login_failed' || data.status === 'error') {
+        statusIndicator.classList.add('error');
+        statusText.textContent = 'Error';
+        statusSub.textContent = data.status === 'login_failed' ? 'Invalid credentials' : 'Check logs';
+      } else {
+        statusText.textContent = data.hasCredentials ? 'Ready' : 'No Credentials';
+        statusSub.textContent = data.hasCredentials ? 'Cron scheduler active' : 'Enter your details below';
+      }
+
+      // Toggle button icon
+      toggleBtn.innerHTML = data.botEnabled
+        ? '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="10" y1="15" x2="10" y2="9"/><line x1="14" y1="15" x2="14" y2="9"/></svg>'
+        : '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>';
+
+      // Stats
+      lastCheckEl.textContent = data.lastCheck || 'Never';
+      lastJoinedEl.textContent = data.lastJoined ? data.lastJoined.name : 'None yet';
+      classCountEl.textContent = data.timetable ? data.timetable.length : '0';
+      botStatusEl.textContent = data.botEnabled ? 'Enabled' : 'Paused';
+
+      // Credential status
+      if (data.hasCredentials) {
+        credStatus.textContent = `✅ Logged in as ${data.regNumber}`;
+        credStatus.className = 'cred-status success';
+      }
+
+      // Uptime
+      const hrs = Math.floor(data.uptime / 3600);
+      const mins = Math.floor((data.uptime % 3600) / 60);
+      uptimeEl.textContent = `⏱ ${hrs}h ${mins}m`;
+
+      // Logs
+      if (data.logs && data.logs.length > 0) {
+        logsEl.innerHTML = data.logs
+          .slice()
+          .reverse()
+          .map(log => `<div class="log-entry ${log.level}"><span class="log-time">${log.timestamp}</span><span class="log-msg">${log.message}</span></div>`)
+          .join('');
+      }
+    }
+
+    // Toggle bot
+    toggleBtn.addEventListener('click', async () => {
+      try {
+        const res = await fetch(`${API}/api/toggle`, { method: 'POST' });
+        const data = await res.json();
+        fetchStatus();
+      } catch (e) {
+        console.error('Toggle error:', e);
+      }
+    });
+
+    // Save credentials
+    saveCredsBtn.addEventListener('click', async () => {
+      const regNumber = regNumberInput.value.trim();
+      const password = passwordInput.value.trim();
+
+      if (!regNumber || !password) {
+        credStatus.textContent = '❌ Both fields are required';
+        credStatus.className = 'cred-status error';
+        return;
+      }
+
+      try {
+        const res = await fetch(`${API}/api/credentials`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ regNumber, password })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+          credStatus.textContent = '✅ Credentials saved!';
+          credStatus.className = 'cred-status success';
+          passwordInput.value = '';
+          fetchStatus();
+        } else {
+          credStatus.textContent = `❌ ${data.error}`;
+          credStatus.className = 'cred-status error';
+        }
+      } catch (e) {
+        credStatus.textContent = '❌ Network error';
+        credStatus.className = 'cred-status error';
+      }
+    });
+
+    // Check now
+    checkNowBtn.addEventListener('click', async () => {
+      checkNowBtn.disabled = true;
+      checkNowBtn.textContent = 'Checking...';
+
+      try {
+        const res = await fetch(`${API}/api/trigger`, { method: 'POST' });
+        const data = await res.json();
+
+        if (data.joined) {
+          checkNowBtn.textContent = `✅ Joined: ${data.className}`;
+        } else if (data.error) {
+          checkNowBtn.textContent = `❌ ${data.error}`;
+        } else {
+          checkNowBtn.textContent = 'No active class';
+        }
+      } catch (e) {
+        checkNowBtn.textContent = '❌ Error';
+      }
+
+      setTimeout(() => {
+        checkNowBtn.disabled = false;
+        checkNowBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg> Check Now';
+        fetchStatus();
+      }, 3000);
+    });
+
+    // View schedule
+    viewScheduleBtn.addEventListener('click', async () => {
+      try {
+        const res = await fetch(`${API}/api/schedule`);
+        const data = await res.json();
+
+        if (data.timetable && data.timetable.length > 0) {
+          scheduleCard.style.display = 'block';
+          timetableEl.innerHTML = data.timetable
+            .map(cls => `
+              <div class="class-row ${cls.status}">
+                <div class="class-status-dot ${cls.status}"></div>
+                <div class="class-info">
+                  <span class="class-name">${cls.name}</span>
+                  <span class="class-time">${cls.time || 'No time info'}</span>
+                </div>
+                <span class="class-badge ${cls.status}">${cls.status}</span>
+              </div>
+            `).join('');
+        } else {
+          scheduleCard.style.display = 'block';
+          timetableEl.innerHTML = '<div class="log-entry">No classes found. Click "Check Now" first.</div>';
+        }
+      } catch (e) {
+        console.error('Schedule error:', e);
+      }
+    });
+  </script>
+</body>
+</html>

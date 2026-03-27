@@ -1,0 +1,45 @@
+{
+  "manifest_version": 3,
+  "name": "AutoClassJoiner - LPU MyClass",
+  "version": "1.0.0",
+  "description": "Automatically login and join classes on myclass.lpu.in (CodeTantra). Save your credentials, and the extension handles the rest.",
+  "permissions": [
+    "storage",
+    "alarms",
+    "tabs",
+    "notifications"
+  ],
+  "host_permissions": [
+    "*://myclass.lpu.in/*",
+    "*://lovelyprofessionaluniversity.codetantra.com/*"
+  ],
+  "background": {
+    "service_worker": "background/service-worker.js"
+  },
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_title": "AutoClassJoiner",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "content_scripts": [
+    {
+      "matches": ["*://myclass.lpu.in/*"],
+      "js": ["content/login.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["*://lovelyprofessionaluniversity.codetantra.com/*"],
+      "js": ["content/dashboard.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}
