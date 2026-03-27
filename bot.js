@@ -424,6 +424,30 @@ class AutoClassBot {
   }
 
   /**
+   * Take a screenshot of the current page
+   */
+  async takeScreenshot() {
+    if (!this.page) return null;
+    try {
+      return await this.page.screenshot({ encoding: 'base64', type: 'png' });
+    } catch (e) {
+      this.log(`Screenshot error: ${e.message}`, 'warn');
+      return null;
+    }
+  }
+
+  /**
+   * Get the current page URL
+   */
+  getCurrentUrl() {
+    try {
+      return this.page ? this.page.url() : null;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
    * Get current status for the dashboard
    */
   getStatus() {
@@ -434,7 +458,9 @@ class AutoClassBot {
       lastJoined: this.lastJoined,
       timetable: this.timetable,
       logs: this.logs.slice(-30),  // Last 30 logs
-      uptime: process.uptime()
+      uptime: process.uptime(),
+      currentUrl: this.getCurrentUrl(),
+      screenshotAvailable: !!(this.page)
     };
   }
 

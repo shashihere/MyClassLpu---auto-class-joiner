@@ -46,9 +46,25 @@
       </div>
     </div>
 
+    <!-- Live Browser View -->
+    <section class="section">
+      <div class="section-header">
+        <h2>🖥 Live Browser View</h2>
+        <button class="btn-small" id="refreshScreenBtn">Refresh</button>
+      </div>
+      <p class="hint" id="browserUrl">No active session</p>
+      <div class="browser-frame" id="browserFrame">
+        <div class="browser-placeholder" id="browserPlaceholder">
+          <span>No browser session active</span>
+          <small>Click "Check Now" to start a session</small>
+        </div>
+        <img id="browserScreenshot" src="" alt="Live browser view" style="display:none;">
+      </div>
+    </section>
+
     <!-- Credentials -->
     <section class="section">
-      <h2>Credentials</h2>
+      <h2>🔐 Credentials</h2>
       <p class="hint">Your UMS login. Stored in server memory only.</p>
       <div class="form">
         <input type="text" id="regNumber" placeholder="Registration Number" autocomplete="off">
@@ -60,7 +76,7 @@
 
     <!-- Actions -->
     <section class="section">
-      <h2>Actions</h2>
+      <h2>⚡ Actions</h2>
       <div class="btn-row">
         <button class="btn-outline" id="checkNowBtn">↻ Check Now</button>
         <button class="btn-outline" id="viewScheduleBtn">📅 View Schedule</button>
@@ -69,13 +85,13 @@
 
     <!-- Schedule -->
     <section class="section" id="scheduleCard" style="display:none;">
-      <h2>Today's Classes</h2>
+      <h2>📅 Today's Classes</h2>
       <div id="timetable"></div>
     </section>
 
-    <!-- Logs -->
+    <!-- Activity Log -->
     <section class="section">
-      <h2>Activity Log</h2>
+      <h2>📋 Activity Log</h2>
       <div class="logs" id="logs">
         <div class="log-empty">Waiting for activity...</div>
       </div>
@@ -91,6 +107,9 @@
     setInterval(fetchStatus, 5000);
     fetchStatus();
 
+    // Auto-refresh screenshot every 10 seconds
+    setInterval(fetchScreenshot, 10000);
+
     async function fetchStatus() {
       try {
         const res = await fetch(`${API}/api/status`);
@@ -100,6 +119,28 @@
         $('statusDot').className = 'status-dot error';
       }
     }
+
+    async function fetchScreenshot() {
+      try {
+        const res = await fetch(`${API}/api/screenshot`);
+        const data = await res.json();
+        if (data.image) {
+          $('browserScreenshot').src = `data:image/png;base64,${data.image}`;
+          $('browserScreenshot').style.display = 'block';
+          $('browserPlaceholder').style.display = 'none';
+          $('browserUrl').textContent = data.url || 'Unknown page';
+        } else {
+          $('browserScreenshot').style.display = 'none';
+          $('browserPlaceholder').style.display = 'flex';
+          $('browserUrl').textContent = 'No active session';
+        }
+      } catch {
+        $('browserScreenshot').style.display = 'none';
+        $('browserPlaceholder').style.display = 'flex';
+      }
+    }
+
+    $('refreshScreenBtn').onclick = fetchScreenshot;
 
     function updateUI(d) {
       const dot = $('statusDot');
@@ -144,6 +185,11 @@
         $('credStatus').className = 'feedback success';
       }
 
+      // Auto-fetch screenshot if session is available
+      if (d.screenshotAvailable) {
+        fetchScreenshot();
+      }
+
       if (d.logs?.length) {
         $('logs').innerHTML = d.logs.slice().reverse().map(l =>
           `<div class="log ${l.level}"><span class="log-time">${l.timestamp}</span><span class="log-msg">${l.message}</span></div>`
@@ -173,6 +219,7 @@
         const res = await fetch(`${API}/api/trigger`, {method:'POST'});
         const d = await res.json();
         $('checkNowBtn').textContent = d.joined ? `✓ Joined: ${d.className}` : d.error ? `✗ ${d.error}` : 'No active class';
+        fetchScreenshot();
       } catch { $('checkNowBtn').textContent = '✗ Error'; }
       setTimeout(() => { $('checkNowBtn').disabled = false; $('checkNowBtn').textContent = '↻ Check Now'; fetchStatus(); }, 3000);
     };

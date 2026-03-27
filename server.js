@@ -96,6 +96,16 @@ app.get('/api/schedule', (req, res) => {
   res.json({ timetable: bot.timetable });
 });
 
+// Get live screenshot of the browser
+app.get('/api/screenshot', async (req, res) => {
+  const screenshot = await bot.takeScreenshot();
+  if (screenshot) {
+    res.json({ image: screenshot, url: bot.getCurrentUrl() });
+  } else {
+    res.json({ image: null, url: null, message: 'No browser session active' });
+  }
+});
+
 // Health check for Render
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', uptime: process.uptime() });
