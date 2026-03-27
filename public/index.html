@@ -68,24 +68,19 @@
           <div class="btn-stack">
             <button class="btn-outline" id="checkNowBtn">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
-              Check Now
-            </button>
-            <button class="btn-outline" id="viewScheduleBtn">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-              View Schedule
+              Force Check Now
             </button>
           </div>
         </section>
 
-        <!-- Schedule (hidden by default) -->
-        <section class="section" id="scheduleCard" style="display:none;">
+        <!-- Schedule -->
+        <section class="section" id="scheduleCard">
           <div class="section-header">
             <h2>Today's Classes</h2>
-            <button class="btn-small icon-only" id="closeScheduleBtn" title="Close">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-            </button>
           </div>
-          <div id="timetable" class="timetable-scroll"></div>
+          <div id="timetable" class="timetable-scroll">
+            <p class="log-empty">Waiting for schedule data...</p>
+          </div>
         </section>
       </div>
 
@@ -226,6 +221,13 @@
         $('accountStatus').className = 'error-text';
       }
 
+      // Render schedule automatically
+      if (d.timetable) {
+        $('timetable').innerHTML = d.timetable.length
+          ? d.timetable.map(c => `<div class="class-row ${c.status}"><span class="class-dot ${c.status}"></span><div><strong>${c.name}</strong><br><small>${c.time||'No time'}</small></div><span class="tag ${c.status}">${c.status}</span></div>`).join('')
+          : '<p class="log-empty">No classes scheduled.</p>';
+      }
+
       // Auto-fetch screenshot if session is available
       if (d.screenshotAvailable) fetchScreenshot();
 
@@ -254,16 +256,10 @@
     };
 
     $('viewScheduleBtn').onclick = async () => {
-      const res = await fetch(`${API}/api/schedule`);
-      const d = await res.json();
-      $('scheduleCard').style.display = 'block';
-      $('timetable').innerHTML = d.timetable?.length
-        ? d.timetable.map(c => `<div class="class-row ${c.status}"><span class="class-dot ${c.status}"></span><div><strong>${c.name}</strong><br><small>${c.time||'No time'}</small></div><span class="tag ${c.status}">${c.status}</span></div>`).join('')
-        : '<p class="log-empty">No classes today.</p>';
-    };
-
-    $('closeScheduleBtn').onclick = () => {
-      $('scheduleCard').style.display = 'none';
+      const originalText = $('viewScheduleBtn').innerHTML;
+      $('viewScheduleBtn').innerHTML = 'Refreshing...';
+      await fetchStatus();
+      setTimeout(() => { $('viewScheduleBtn').innerHTML = originalText; }, 1000);
     };
 
     $('clearLogsBtn').onclick = () => {
