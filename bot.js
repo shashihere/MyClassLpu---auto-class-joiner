@@ -426,6 +426,38 @@ class AutoClassBot {
         return false;
       }
 
+      // Select "Listen only" on BBB audio modal
+      try {
+        this.log('Waiting for audio selection prompt (Listen only)...');
+        await this.page.waitForFunction(() => {
+          const btns = Array.from(document.querySelectorAll('button'));
+          return btns.some(b => 
+            (b.getAttribute('aria-label') || '').toLowerCase().includes('listen only') ||
+            (b.textContent || '').toLowerCase().includes('listen only')
+          );
+        }, { timeout: 15000 });
+
+        const clicked = await this.page.evaluate(() => {
+          const btns = Array.from(document.querySelectorAll('button'));
+          const btn = btns.find(b => 
+            (b.getAttribute('aria-label') || '').toLowerCase().includes('listen only') ||
+            (b.textContent || '').toLowerCase().includes('listen only')
+          );
+          if (btn) {
+            btn.click();
+            return true;
+          }
+          return false;
+        });
+
+        if (clicked) {
+          this.log('Selected "Listen only" audio mode.');
+          await this.delay(1000);
+        }
+      } catch (err) {
+        this.log('Audio prompt not found; might be direct join or non-BBB meeting.', 'info');
+      }
+
       this.log(`✅ Successfully joined class: "${classInfo.name}"`);
       return true;
 
